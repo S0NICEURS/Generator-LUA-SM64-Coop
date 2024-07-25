@@ -10,7 +10,7 @@ class LuaGeneratorApp:
     def __init__(self, master):
         self.master = master
         self.master.title("Generator LUA: Soundtrack Pack")
-        self.master.geometry("1777x800")  # Increased width for better visibility
+        self.master.geometry("1890x850")  # Increased width for better visibility
 
         self.levels = {
             9: "BobOmb",
@@ -55,6 +55,18 @@ class LuaGeneratorApp:
         self.create_widgets()
 
     def create_widgets(self):
+        # Create menu
+        self.menu = tk.Menu(self.master)
+        self.master.config(menu=self.menu)
+
+        # Add file menu
+        file_menu = tk.Menu(self.menu, tearoff=0)
+        self.menu.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Load", command=self.load_file)
+        file_menu.add_command(label="Save", command=self.save_file)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.master.quit)
+
         # Create a canvas and a vertical scrollbar
         self.canvas = tk.Canvas(self.master)
         self.scrollbar = tk.Scrollbar(self.master, orient="vertical", command=self.canvas.yview)
@@ -76,6 +88,7 @@ class LuaGeneratorApp:
         self.audio_vars = {}
         self.name_vars = {}
         self.volume_vars = {}
+        self.loop_end_vars = {}
 
         for level_id, level_name in self.levels.items():
             frame = tk.Frame(self.level_frame)
@@ -108,6 +121,14 @@ class LuaGeneratorApp:
             volume_scale = tk.Scale(frame, variable=volume_var, from_=0.0, to=1.0, resolution=0.01, orient=tk.HORIZONTAL, length=200, sliderlength=20, font=("Arial", 8))
             volume_scale.pack(side=tk.LEFT, padx=5)
             self.volume_vars[level_id] = volume_var
+
+            # Loop end control
+            loop_end_label = tk.Label(frame, text="LoopEnd:", font=("Arial", 8))
+            loop_end_label.pack(side=tk.LEFT, padx=5)
+            loop_end_var = DoubleVar(value=60.0)
+            loop_end_entry = tk.Entry(frame, textvariable=loop_end_var, width=10, font=("Arial", 8))
+            loop_end_entry.pack(side=tk.LEFT, padx=5)
+            self.loop_end_vars[level_id] = loop_end_var
 
         # Update scroll region
         self.canvas_frame.update_idletasks()
@@ -155,14 +176,38 @@ class LuaGeneratorApp:
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
-    def get_loop_end(self, audio_name):
-        """Return an estimated loop end value based on the file extension."""
-        if audio_name.endswith(".ogg"):
-            return 60.0  # Approximate value for OGG files
-        elif audio_name.endswith(".mp3"):
-            return 60.0  # Approximate value for MP3 files
-        else:
-            return 60.0  # Default value if unknown format
+    def load_file(self):
+        lua_file_path = filedialog.askopenfilename(filetypes=[("Lua files", "*.lua")])
+        if not lua_file_path:
+            return
+        try:
+            with open(lua_file_path, "r") as file:
+                content = file.read()
+                self.parse_lua_code(content)
+            messagebox.showinfo("Success", f"Lua file loaded successfully:\n{lua_file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    def save_file(self):
+        self.generate_lua_file()
+
+    def parse_lua_code(self, content):
+        lines = content.splitlines()
+        for line in lines:
+            if line.startswith("["):
+                parts = line.split(" = {")
+                level_id = int(parts[0][1:-1])
+                details = parts[1].strip("},")
+                details_parts = details.split(", ")
+                audio_name = details_parts[0].split("'")[1]
+                loop_end = float(details_parts[1].split(" = ")[1])
+                volume = float(details_parts[3].split(" = ")[1])
+                name = details_parts[4].split("\"")[1]
+                if level_id in self.audio_vars:
+                    self.audio_vars[level_id].set(audio_name)
+                    self.loop_end_vars[level_id].set(loop_end)
+                    self.volume_vars[level_id].set(volume)
+                    self.name_vars[level_id].set(name)
 
     def generate_lua_code(self):
         script_name = self.script_name_var.get()
@@ -188,8 +233,8 @@ local bgms = {{
             audio_name = audio_var.get()
             name = self.name_vars.get(level_id, StringVar(value="")).get()
             volume = self.volume_vars.get(level_id, DoubleVar(value=0.5)).get()
+            loop_end = self.loop_end_vars.get(level_id, DoubleVar(value=60.0)).get()
             if audio_name:
-                loop_end = self.get_loop_end(audio_name)
                 lua_template += f"\t[{level_id}] = {{audio='{audio_name}', loopEnd = {loop_end}, loopStart = 0, volume = {volume}, name=\"{name}\"}},\n"
 
         lua_template += """
@@ -385,8 +430,8 @@ end
 function on_mama_action(m)
 	if m.playerIndex == 0 then
 		if m.action == ACT_STAR_DANCE_EXIT or m.action == ACT_STAR_DANCE_NO_EXIT or m.action == ACT_STAR_DANCE_WATER then
-			audio_stream_play(STREAM_STAR, false, 1)
-			audio_stream_set_looping(STREAM_STAR, false)
+			--audio_stream_play(STREAM_STAR, false, 1)
+			--audio_stream_set_looping(STREAM_STAR, false)
 		end
 	end
 end
@@ -409,8 +454,6 @@ end
 
 main1()
 main2()
-
-
 
 """
 
