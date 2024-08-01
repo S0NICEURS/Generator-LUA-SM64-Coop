@@ -32,5 +32,5 @@ if not os.path.exists(json_file):
         json.dump({"modules_installed": True}, file)
 
 # Lancer le script Python désiré
-subprocess.run(['python', 'Generator LUA Soundtrack Pack.py'])
+subprocess.run(['python', 'Generator LUA Soundtrack Pack V1.5.py'])
 
