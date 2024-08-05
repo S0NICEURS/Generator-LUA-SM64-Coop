@@ -305,9 +305,7 @@ class LuaGeneratorApp:
         star_select_file = self.star_select_var.get()
         lose_file = self.lose_var.get()
         
-        lua_template = f"""
-
--- name: {script_name}
+        lua_template = f"""-- name: {script_name}
 -- description: {script_description}
 
 function main1()
