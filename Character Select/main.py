@@ -33,5 +33,5 @@ if not os.path.exists(json_file):
         json.dump({"modules_installed": True}, file)
 
 # Lancer le script Python désiré
-subprocess.run(['python', 'Generator LUA [CS].py'])
+subprocess.run(['python', 'Generator LUA [CS] v1.2.py'])
 
